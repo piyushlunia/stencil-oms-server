@@ -15,7 +15,6 @@ exports.getRole = async (req, res, next) => {
   try {
     const role = await Role.findOne({ name: req.params.name });
     if (!role) {
-      // Return defaults for built-in roles
       const defaults = ROLE_DEFAULTS[req.params.name];
       if (defaults) return res.json({ success: true, data: { name: req.params.name, permissions: defaults, isBuiltIn: true } });
       return res.status(404).json({ success: false, message: 'Role not found' });
@@ -40,7 +39,6 @@ exports.updateRole = async (req, res, next) => {
     const { permissions, label, description } = req.body;
     let role = await Role.findOne({ name: req.params.name });
     if (!role) {
-      // Create from built-in
       role = new Role({ name: req.params.name, label: label || req.params.name, permissions: permissions || [], description });
     } else {
       if (permissions !== undefined) role.permissions = permissions;
@@ -57,10 +55,8 @@ exports.togglePermission = async (req, res, next) => {
   try {
     const { permission, enabled } = req.body;
     if (!permission) return res.status(400).json({ success: false, message: 'permission required' });
-
     let role = await Role.findOne({ name: req.params.name });
     if (!role) {
-      // Bootstrap from defaults
       const defaults = ROLE_DEFAULTS[req.params.name] || [];
       role = new Role({ name: req.params.name, label: req.params.name, permissions: [...defaults] });
     }
@@ -82,25 +78,25 @@ exports.deleteRole = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// GET /api/permissions/matrix — returns the full PM_MATRIX definition
+// GET /api/permissions/matrix
 exports.getMatrix = async (req, res, next) => {
   const PM_MATRIX = [
-    { module:'Orders',      icon:'📋', cells:{ View:'viewAllOrders', Create:'createOrder', Edit:'editOrder', Delete:'deleteOrder', Export:'exportOrders', Assign:'approve', Find:'viewAllOrders' } },
-    { module:'Pending DONs',icon:'📦', cells:{ View:'viewPendingDon', Edit:'editPendingDon' } },
-    { module:'Pending SPOs',icon:'📄', cells:{ View:'viewPendingSpo', Edit:'editPendingSpo' } },
-    { module:'Status Flow', icon:'🔄', cells:{ View:'viewAllOrders', Create:'raisePo', Edit:'logisticsUpdate', Assign:'transitUpdate' } },
-    { module:'Supplier PO', icon:'🧾', cells:{ View:'viewSupplierPo', Edit:'editSupplierPo' } },
-    { module:'Shipments',   icon:'🚛', cells:{ View:'viewShipments', Edit:'editShipments' } },
-    { module:'Delivery',    icon:'📬', cells:{ View:'viewDelivery', Assign:'deliver' } },
-    { module:'GRN/Purchase',icon:'📝', cells:{ View:'viewAllOrders', Create:'raiseGrn', Edit:'purchaseOrder' } },
-    { module:'Visibility',  icon:'👁', cells:{ View:'viewVendor', Create:'viewBiller' } },
-    { module:'Masters',     icon:'🗂', cells:{ View:'viewMaster', Edit:'editMaster' } },
-    { module:'Admin',       icon:'⚙️', cells:{ View:'viewReports', Create:'manageUsers', Edit:'manageRoles', Export:'exportReports', Assign:'viewBackend' } },
+    { module:'Orders',       icon:'📋', cells:{ View:'viewAllOrders', Create:'createOrder', Edit:'editOrder', Delete:'deleteOrder', Export:'exportOrders', Assign:'approve', Find:'updateOrderStatus' } },
+    { module:'Pending DONs', icon:'📦', cells:{ View:'viewPendingDon', Edit:'editPendingDon' } },
+    { module:'Pending SPOs', icon:'📄', cells:{ View:'viewPendingSpo', Create:'raisePo', Edit:'editPendingSpo' } },
+    { module:'Shipments',    icon:'🚛', cells:{ View:'viewShipments', Edit:'logisticsUpdate', Assign:'transitUpdate' } },
+    { module:'Delivery',     icon:'📬', cells:{ View:'viewDelivery', Assign:'deliver' } },
+    { module:'Supplier PO',  icon:'🧾', cells:{ View:'viewSupplierPo', Edit:'editSupplierPo' } },
+    { module:'GRN/Purchase', icon:'📝', cells:{ View:'viewAllOrders', Create:'raiseGrn', Edit:'purchaseOrder' } },
+    { module:'Visibility',   icon:'👁', cells:{ View:'viewVendor', Create:'viewBiller' } },
+    { module:'Masters',      icon:'🗂', cells:{ View:'viewMaster', Edit:'editMaster' } },
+    { module:'Reports',      icon:'📈', cells:{ View:'viewReports', Export:'exportReports' } },
+    { module:'Admin',        icon:'⚙️', cells:{ View:'viewBackend', Create:'manageUsers', Edit:'manageRoles' } },
   ];
   res.json({ success: true, data: PM_MATRIX });
 };
 
-// GET /api/permissions/all-keys — flat list of all permission keys
+// GET /api/permissions/all-keys
 exports.getAllKeys = (req, res) => {
   const keys = [...new Set(Object.values(ROLE_DEFAULTS).flat())].sort();
   res.json({ success: true, data: keys });
