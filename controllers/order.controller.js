@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const { syncToSheets } = require('./sheetsSync');
 
 const trailEntry = (type, desc, from, to, note, user) => ({
   type, desc,
@@ -28,7 +29,7 @@ exports.getOrders = async (req, res, next) => {
 
 exports.getOrder = async (req, res, next) => { try { const order = await Order.findOne({ $or: [{ _id: req.params.id.match(/^[0-9a-fA-F]{24}$/) ? req.params.id : null }, { seqId: parseInt(req.params.id) || -1 }] }).populate('customerId supplierId transporterId productId'); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); res.json({ success: true, data: order }); } catch (err) { next(err); } };
 
-exports.createOrder = async (req, res, next) => { try { const body = req.body; const order = new Order({ ...body, createdBy: req.user.name || req.user.username, createdById: req.user._id }); order.trail = [trailEntry('created','Order created','',body.status||'Order','',req.user)]; await order.save(); res.status(201).json({ success: true, data: order, message: 'Order created' }); } catch (err) { next(err); } };
+exports.createOrder = async (req, res, next) => { try { const body = req.body; const order = new Order({ ...body, createdBy: req.user.name || req.user.username, createdById: req.user._id }); order.trail = [trailEntry('created','Order created','',body.status||'Order','',req.user)]; await order.save(); syncToSheets(order).catch(()=>{}); res.status(201).json({ success: true, data: order, message: 'Order created' }); } catch (err) { next(err); } };
 
 exports.updateOrder = async (req, res, next) => {
   try {
@@ -39,7 +40,6 @@ exports.updateOrder = async (req, res, next) => {
     const prevStatus = order.status;
     const changes = [];
 
-    /* Deny-list: system/immutable fields that must never be overwritten via PUT */
     const denied = new Set(['_id', '__v', 'seqId', 'createdAt', 'updatedAt', 'createdById', 'isActive']);
 
     Object.keys(req.body).forEach(k => {
@@ -47,21 +47,19 @@ exports.updateOrder = async (req, res, next) => {
       const newVal = req.body[k];
       const oldVal = order[k];
       if (JSON.stringify(newVal) !== JSON.stringify(oldVal)) {
-        changes.push(`${k}: ${oldVal} → ${newVal}`);
+        changes.push(k + ': ' + oldVal + ' -> ' + newVal);
       }
       order[k] = newVal;
     });
 
-    /* ETA history */
     if (req.body.eta && req.body.eta !== prevEta) {
       order.etaHistory = order.etaHistory || [];
       order.etaHistory.push({ from: prevEta, to: req.body.eta, reason: req.body.etaReason || '', changedBy: req.user.name, changedById: req.user._id });
       order.trail.push(trailEntry('eta', 'ETA changed', prevEta, req.body.eta, req.body.etaReason || '', req.user));
     }
 
-    /* Status trail */
     if (req.body.status && req.body.status !== prevStatus) {
-      order.trail.push(trailEntry('status', `Status changed to ${req.body.status}`, prevStatus, req.body.status, '', req.user));
+      order.trail.push(trailEntry('status', 'Status changed to ' + req.body.status, prevStatus, req.body.status, '', req.user));
     }
 
     if (changes.length) {
@@ -69,11 +67,12 @@ exports.updateOrder = async (req, res, next) => {
     }
 
     await order.save();
+    syncToSheets(order).catch(()=>{});
     res.json({ success: true, data: order, message: 'Order updated' });
   } catch (err) { next(err); }
 };
 
-exports.updateStatus = async (req, res, next) => { try { const { status, note, ...extra } = req.body; if (!status) return res.status(400).json({ success: false, message: 'Status required' }); const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); const prev = order.status; order.status = status; const logFields = ['lr','lrDate','transporter','transporterId','transitMode','transitForm','vendorInvoice','transitDays']; logFields.forEach(k => { if (extra[k] !== undefined) order[k] = extra[k]; }); order.trail.push(trailEntry('status', `Status changed to ${status}`, prev, status, note||'', req.user)); await order.save(); res.json({ success: true, data: order, message: `Status updated to ${status}` }); } catch (err) { next(err); } };
+exports.updateStatus = async (req, res, next) => { try { const { status, note, ...extra } = req.body; if (!status) return res.status(400).json({ success: false, message: 'Status required' }); const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); const prev = order.status; order.status = status; const logFields = ['lr','lrDate','transporter','transporterId','transitMode','transitForm','vendorInvoice','transitDays']; logFields.forEach(k => { if (extra[k] !== undefined) order[k] = extra[k]; }); order.trail.push(trailEntry('status', 'Status changed to ' + status, prev, status, note||'', req.user)); await order.save(); syncToSheets(order).catch(()=>{}); res.json({ success: true, data: order, message: 'Status updated to ' + status }); } catch (err) { next(err); } };
 
 exports.updateEta = async (req, res, next) => { try { const { eta, reason } = req.body; if (!eta) return res.status(400).json({ success: false, message: 'ETA required' }); const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); const prevEta = order.eta; order.eta = eta; order.etaHistory.push({ from: prevEta, to: eta, reason: reason||'', changedBy: req.user.name, changedById: req.user._id }); order.trail.push(trailEntry('eta','ETA changed', prevEta, eta, reason||'', req.user)); await order.save(); res.json({ success: true, data: order, message: 'ETA updated' }); } catch (err) { next(err); } };
 
@@ -85,7 +84,7 @@ exports.addBilling = async (req, res, next) => { try { const order = await Order
 
 exports.markDelivered = async (req, res, next) => { try { const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); order.delivery = { ...req.body, deliveredBy: req.user.name, deliveredById: req.user._id, deliveredAt: new Date() }; order.status = 'Delivered'; order.trail.push(trailEntry('delivery','Order delivered', order.status, 'Delivered', req.body.notes||'', req.user)); await order.save(); res.json({ success: true, data: order, message: 'Marked as delivered' }); } catch (err) { next(err); } };
 
-exports.splitOrder = async (req, res, next) => { try { const { splitQty } = req.body; const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); if (splitQty >= order.qty) return res.status(400).json({ success: false, message: 'Split qty must be less than total qty' }); const remQty = order.qty - splitQty; order.qty = splitQty; order.isSplit = true; order.trail.push(trailEntry('split', `Order split ${splitQty} / ${remQty}`, '','','', req.user)); await order.save(); const remainder = new Order({ ...order.toObject(), _id: undefined, seqId: undefined, qty: remQty, isSplit: true, linkedToOrderId: order.seqId, trail: [trailEntry('created',`Split from DON-${order.seqId}`,'','Order','',req.user)], etaHistory: [], grn: undefined, billing: undefined, delivery: undefined }); await remainder.save(); res.json({ success: true, data: { original: order, split: remainder }, message: 'Order split' }); } catch (err) { next(err); } };
+exports.splitOrder = async (req, res, next) => { try { const { splitQty } = req.body; const order = await Order.findById(req.params.id); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); if (splitQty >= order.qty) return res.status(400).json({ success: false, message: 'Split qty must be less than total qty' }); const remQty = order.qty - splitQty; order.qty = splitQty; order.isSplit = true; order.trail.push(trailEntry('split', 'Order split ' + splitQty + ' / ' + remQty, '','','', req.user)); await order.save(); const remainder = new Order({ ...order.toObject(), _id: undefined, seqId: undefined, qty: remQty, isSplit: true, linkedToOrderId: order.seqId, trail: [trailEntry('created','Split from DON-' + order.seqId,'','Order','',req.user)], etaHistory: [], grn: undefined, billing: undefined, delivery: undefined }); await remainder.save(); res.json({ success: true, data: { original: order, split: remainder }, message: 'Order split' }); } catch (err) { next(err); } };
 
 exports.getTrail = async (req, res, next) => { try { const order = await Order.findById(req.params.id).select('trail seqId customer'); if (!order) return res.status(404).json({ success: false, message: 'Order not found' }); res.json({ success: true, data: order.trail }); } catch (err) { next(err); } };
 
