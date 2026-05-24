@@ -78,13 +78,13 @@ const orderSchema = new mongoose.Schema({
 
   // Dates
   orderDate:      { type: Date, required: true, default: Date.now },
-  eta:            { type: String },   // stored as YYYY-MM-DD string (to match frontend)
+  eta:            { type: String },   // stored as YYYY-MM-DD string
   etaBangalore:   { type: String },
 
-  // Status
+  // Status — includes both 'Cancel' and 'Cancelled' for compatibility
   status: {
     type: String,
-    enum: ['Order','Approved','PO Raised','In Transit','At Transporter','Warehouse','GRN','Purchased','Billed','Delivered','Cancelled'],
+    enum: ['Order','Approved','PO Raised','In Transit','At Transporter','Warehouse','GRN','Purchased','Billed','Delivered','Cancelled','Cancel'],
     default: 'Order',
   },
 
@@ -97,14 +97,45 @@ const orderSchema = new mongoose.Schema({
   transitForm:    { type: String },
   vendorInvoice:  { type: String, trim: true },
   transitDays:    { type: Number },
+  transitDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
+
+  // PO fields
+  poNum:          { type: String, trim: true },
+  vendorPoNum:    { type: String, trim: true },
 
   // Pricing
   purchaseRate:   { type: Number },
   sellingRate:    { type: Number },
 
+  // Cancel fields
+  cancelReason:   { type: String },
+  cancelledBy:    { type: String },
+  cancelledAt:    { type: String },
+
+  // GRN flat fields (in addition to grn sub-doc)
+  grnNo:          { type: String },
+  grnDate:        { type: String },
+  grnBy:          { type: String },
+  grnRemarks:     { type: String },
+  physGrnNo:      { type: String },
+  physGrnDate:    { type: String },
+
+  // Billing / Purchase flat fields
+  purchVoucherNo:     { type: String },
+  vendorInvoiceNum:   { type: String },
+  vendorInvoiceDate:  { type: String },
+
+  // Roles
+  biller:         { type: String },
+  salesExec:      { type: String },
+
   // Misc
   notes:          { type: String },
+  remark:         { type: String },
+  comments:       { type: [mongoose.Schema.Types.Mixed], default: [] },
   isSplit:        { type: Boolean, default: false },
+  isStockOrder:   { type: Boolean, default: false },
+  isStockAddition:{ type: Boolean, default: false },
   linkedToOrderId:{ type: Number },
 
   // Sub-documents
