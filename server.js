@@ -6,6 +6,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const { errorHandler, notFound } = require('./middleware/error.middleware');
+const { protect } = require('./middleware/auth.middleware');
 
 // ── Routes ──────────────────────────────────────────────────────
 const authRoutes        = require('./routes/auth.routes');
@@ -58,6 +59,32 @@ app.use('/api/auth', rateLimit({
 // ── Health Check ─────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Stencil OMS API is running 🚀', env: process.env.NODE_ENV });
+});
+
+// ── Admin: Wipe ALL data (superadmin only) ───────────────────────
+app.delete('/api/admin/wipe-all', protect, async (req, res, next) => {
+  try {
+    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, message: 'Superadmin only' });
+    }
+    const Order       = require('./models/Order');
+    const Customer    = require('./models/Customer');
+    const Supplier    = require('./models/Supplier');
+    const Product     = require('./models/Product');
+    const Transporter = require('./models/Transporter');
+    const User        = require('./models/User');
+
+    // Hard-delete everything
+    await Order.deleteMany({});
+    await Customer.deleteMany({});
+    await Supplier.deleteMany({});
+    await Product.deleteMany({});
+    await Transporter.deleteMany({});
+    // Keep superadmin user, delete all others
+    await User.deleteMany({ role: { $ne: 'superadmin' } });
+
+    res.json({ success: true, message: 'All data wiped from database' });
+  } catch (err) { next(err); }
 });
 
 // ── API Routes ───────────────────────────────────────────────────
