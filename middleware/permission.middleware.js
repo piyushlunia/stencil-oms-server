@@ -2,7 +2,7 @@ const Role = require('../models/Role');
 
 // Role default permission sets
 const ROLE_DEFAULTS = {
-  superadmin: ['viewAllOrders','createOrder','editOrder','deleteOrder','exportOrders','approve',
+  superadmin: ['viewAllOrders','createOrder','editOrder','updateOrderStatus','deleteOrder','exportOrders','approve',
     'viewPendingDon','editPendingDon','viewPendingSpo','editPendingSpo',
     'raisePo','logisticsUpdate','transitUpdate',
     'viewSupplierPo','editSupplierPo',
@@ -12,7 +12,7 @@ const ROLE_DEFAULTS = {
     'viewVendor','viewBiller',
     'viewMaster','editMaster',
     'viewReports','manageUsers','manageRoles','exportReports','viewBackend'],
-  admin: ['viewAllOrders','createOrder','editOrder','deleteOrder','exportOrders','approve',
+  admin: ['viewAllOrders','createOrder','editOrder','updateOrderStatus','deleteOrder','exportOrders','approve',
     'viewPendingDon','editPendingDon','viewPendingSpo','editPendingSpo',
     'raisePo','logisticsUpdate','transitUpdate',
     'viewSupplierPo','editSupplierPo',
@@ -22,7 +22,7 @@ const ROLE_DEFAULTS = {
     'viewVendor','viewBiller',
     'viewMaster','editMaster',
     'viewReports','manageUsers','manageRoles','exportReports','viewBackend'],
-  manager: ['viewAllOrders','createOrder','editOrder','exportOrders','approve',
+  manager: ['viewAllOrders','createOrder','editOrder','updateOrderStatus','exportOrders','approve',
     'viewPendingDon','editPendingDon','viewPendingSpo','editPendingSpo',
     'raisePo','logisticsUpdate','transitUpdate',
     'viewSupplierPo','editSupplierPo',
@@ -31,7 +31,7 @@ const ROLE_DEFAULTS = {
     'raiseGrn','purchaseOrder',
     'viewVendor','viewBiller',
     'viewMaster','viewReports','exportReports'],
-  logistics: ['viewAllOrders','logisticsUpdate','transitUpdate',
+  logistics: ['viewAllOrders','updateOrderStatus','logisticsUpdate','transitUpdate',
     'viewShipments','editShipments','viewDelivery','deliver',
     'viewPendingDon','viewSupplierPo','viewMaster'],
   purchase: ['viewAllOrders','createOrder','editOrder','approve',
