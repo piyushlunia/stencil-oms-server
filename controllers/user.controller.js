@@ -31,8 +31,18 @@ exports.getUser = async (req, res, next) => {
 // POST /api/users
 exports.createUser = async (req, res, next) => {
   try {
-    const { name, username, email, password, role, phone } = req.body;
-    const user = await User.create({ name, username, email, password, role, phone, createdBy: req.user._id });
+    const { name, username, email, password, role, phone,
+            department, departmentName, teamLeadId, teamLeadName } = req.body;
+    const payload = {
+      name, username, email, password, role, phone: phone || '',
+      departmentName: departmentName || '',
+      teamLeadName:   teamLeadName   || '',
+      createdBy: req.user._id,
+    };
+    // Only set ObjectId fields when a valid non-empty value is provided
+    if (department)  payload.department  = department;
+    if (teamLeadId)  payload.teamLeadId  = teamLeadId;
+    const user = await User.create(payload);
     res.status(201).json({ success: true, data: user, message: 'User created' });
   } catch (err) { next(err); }
 };
@@ -40,7 +50,8 @@ exports.createUser = async (req, res, next) => {
 // PUT /api/users/:id
 exports.updateUser = async (req, res, next) => {
   try {
-    const { name, email, role, phone, isActive, permissionOverrides, roleRef } = req.body;
+    const { name, email, role, phone, isActive, permissionOverrides, roleRef,
+            department, departmentName, teamLeadId, teamLeadName } = req.body;
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
@@ -51,6 +62,13 @@ exports.updateUser = async (req, res, next) => {
     if (isActive !== undefined) user.isActive = isActive;
     if (permissionOverrides !== undefined) user.permissionOverrides = permissionOverrides;
     if (roleRef !== undefined) user.roleRef = roleRef;
+    if (departmentName !== undefined) user.departmentName = departmentName;
+    if (teamLeadName   !== undefined) user.teamLeadName   = teamLeadName;
+    // Only update ObjectId fields when a valid non-empty value is provided
+    if (department) user.department = department;
+    else if (department === null || department === '') user.department = undefined;
+    if (teamLeadId) user.teamLeadId = teamLeadId;
+    else if (teamLeadId === null || teamLeadId === '') user.teamLeadId = undefined;
 
     await user.save();
     res.json({ success: true, data: user, message: 'User updated' });
