@@ -23,40 +23,6 @@ const etaHistorySchema = new mongoose.Schema({
   changedAt:  { type: Date, default: Date.now },
 }, { _id: true });
 
-// ── GRN Sub-doc ──────────────────────────────────────────────────
-const grnSchema = new mongoose.Schema({
-  grnNumber:    { type: String },
-  receivedQty:  { type: Number },
-  receivedDate: { type: Date },
-  condition:    { type: String, enum: ['Good','Damaged','Partial'], default: 'Good' },
-  notes:        { type: String },
-  raisedBy:     { type: String },
-  raisedById:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  raisedAt:     { type: Date },
-}, { _id: false });
-
-// ── Billing Sub-doc ──────────────────────────────────────────────
-const billingSchema = new mongoose.Schema({
-  invoiceNumber: { type: String },
-  invoiceDate:   { type: Date },
-  billedBy:      { type: String },
-  billedById:    { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  billedAt:      { type: Date },
-  amount:        { type: Number },
-  notes:         { type: String },
-}, { _id: false });
-
-// ── Delivery Sub-doc ─────────────────────────────────────────────
-const deliverySchema = new mongoose.Schema({
-  deliveredDate: { type: Date },
-  receivedBy:    { type: String },
-  deliveredBy:   { type: String },
-  deliveredById: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  deliveredAt:   { type: Date },
-  notes:         { type: String },
-  podImage:      { type: String },
-}, { _id: false });
-
 // ── Main Order Schema ────────────────────────────────────────────
 const orderSchema = new mongoose.Schema({
   // Sequential numeric DON id (for display as DON-XXXX)
@@ -78,7 +44,7 @@ const orderSchema = new mongoose.Schema({
 
   // Dates
   orderDate:      { type: Date, required: true, default: Date.now },
-  eta:            { type: String },   // stored as YYYY-MM-DD string (to match frontend)
+  eta:            { type: String },
   etaBangalore:   { type: String },
 
   // Status
@@ -115,7 +81,7 @@ const orderSchema = new mongoose.Schema({
   cancelledBy:    { type: String, default: '' },
   cancelledAt:    { type: String, default: '' },
 
-  // GRN flat fields (used by frontend alongside grn subdoc)
+  // GRN flat fields
   grnNo:          { type: String, trim: true, default: '' },
   grnDate:        { type: String, default: '' },
   grnBy:          { type: String, default: '' },
@@ -144,10 +110,10 @@ const orderSchema = new mongoose.Schema({
   isSplit:        { type: Boolean, default: false },
   linkedToOrderId:{ type: Number },
 
-  // Sub-documents
-  grn:            { type: grnSchema },
-  billing:        { type: billingSchema },
-  delivery:       { type: deliverySchema },
+  // Sub-documents — stored as Mixed so frontend arrays/objects pass through without cast errors
+  grn:            { type: mongoose.Schema.Types.Mixed, default: {} },
+  billing:        { type: mongoose.Schema.Types.Mixed, default: [] },
+  delivery:       { type: mongoose.Schema.Types.Mixed, default: {} },
   etaHistory:     [etaHistorySchema],
   trail:          [trailEntrySchema],
 
