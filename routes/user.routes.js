@@ -4,8 +4,8 @@ const { protect, restrictTo } = require('../middleware/auth.middleware');
 
 router.use(protect);
 
-router.get  ('/',                    restrictTo('superadmin','admin','manager'), ctrl.getUsers);
-router.get  ('/:id',                 restrictTo('superadmin','admin','manager'), ctrl.getUser);
+router.get  ('/',                    restrictTo('superadmin','admin','manager','teamlead'), ctrl.getUsers);
+router.get  ('/:id',                 restrictTo('superadmin','admin','manager','teamlead'), ctrl.getUser);
 router.post ('/',                    restrictTo('superadmin','admin'),           ctrl.createUser);
 router.put  ('/:id',                 restrictTo('superadmin','admin'),           ctrl.updateUser);
 router.delete('/:id',                restrictTo('superadmin','admin'),           ctrl.deleteUser);
