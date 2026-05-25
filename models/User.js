@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, minlength: 6, select: false },
   role: {
     type: String,
-    enum: ['superadmin','admin','manager','logistics','purchase','biller','salesman'],
+    enum: ['superadmin','admin','manager','teamlead','logistics','purchase','biller','salesman'],
     default: 'salesman',
   },
   roleRef: { type: mongoose.Schema.Types.ObjectId, ref: 'Role' },
@@ -19,6 +19,11 @@ const userSchema = new mongoose.Schema({
   avatar:    { type: String },
   lastLogin: { type: Date },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  // Org hierarchy fields
+  department:     { type: mongoose.Schema.Types.ObjectId, ref: 'Department' },
+  departmentName: { type: String, trim: true, default: '' },
+  teamLeadId:     { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  teamLeadName:   { type: String, trim: true, default: '' },
 }, { timestamps: true });
 
 // Hash password before save
