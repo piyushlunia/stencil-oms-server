@@ -23,6 +23,7 @@ const donRoutes         = require('./routes/don.routes');
 const spoRoutes         = require('./routes/spo.routes');
 const grnRoutes         = require('./routes/grn.routes');
 const shipmentRoutes    = require('./routes/shipment.routes');
+const departmentRoutes  = require('./routes/department.routes');
 
 // ── App ──────────────────────────────────────────────────────────
 const app = express();
@@ -102,6 +103,7 @@ app.use('/api/dons',         donRoutes);
 app.use('/api/spos',         spoRoutes);
 app.use('/api/grns',         grnRoutes);
 app.use('/api/shipments',    shipmentRoutes);
+app.use('/api/departments',  departmentRoutes);
 
 // ── Error Handling ───────────────────────────────────────────────
 app.use(notFound);
