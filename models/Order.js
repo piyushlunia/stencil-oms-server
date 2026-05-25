@@ -2,12 +2,12 @@ const mongoose = require('mongoose');
 
 // ── Trail Entry ──────────────────────────────────────────────────
 const trailEntrySchema = new mongoose.Schema({
-  type:  { type: String, enum: ['created','status','eta','comment','split','grn','billing','delivery','logistics','po','edited'], required: true },
-  desc:  { type: String, required: true },
+  type:  { type: String, default: 'edit' },
+  desc:  { type: String, default: '' },
   from:  { type: String, default: '' },
   to:    { type: String, default: '' },
   note:  { type: String, default: '' },
-  by:    { type: String, required: true },
+  by:    { type: String, default: 'System' },
   byId:  { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   role:  { type: String, default: '' },
   at:    { type: Date, default: Date.now },
@@ -78,13 +78,13 @@ const orderSchema = new mongoose.Schema({
 
   // Dates
   orderDate:      { type: Date, required: true, default: Date.now },
-  eta:            { type: String },   // stored as YYYY-MM-DD string
+  eta:            { type: String },   // stored as YYYY-MM-DD string (to match frontend)
   etaBangalore:   { type: String },
 
-  // Status — includes both 'Cancel' and 'Cancelled' for compatibility
+  // Status
   status: {
     type: String,
-    enum: ['Order','Approved','PO Raised','In Transit','At Transporter','Warehouse','GRN','Purchased','Billed','Delivered','Cancelled','Cancel'],
+    enum: ['Order','Approved','PO Raised','In Transit','At Transporter','Warehouse','GRN','Purchased','Billed','Delivered','Cancelled'],
     default: 'Order',
   },
 
@@ -97,45 +97,51 @@ const orderSchema = new mongoose.Schema({
   transitForm:    { type: String },
   vendorInvoice:  { type: String, trim: true },
   transitDays:    { type: Number },
-  transitDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
-
-  // PO fields
-  poNum:          { type: String, trim: true },
-  vendorPoNum:    { type: String, trim: true },
 
   // Pricing
   purchaseRate:   { type: Number },
   sellingRate:    { type: Number },
 
+  // PO / Vendor
+  poNum:          { type: String, trim: true, default: '' },
+  vendorPoNum:    { type: String, trim: true, default: '' },
+
+  // Staff fields
+  biller:         { type: String, trim: true, default: '' },
+  salesExec:      { type: String, trim: true, default: '' },
+
   // Cancel fields
-  cancelReason:   { type: String },
-  cancelledBy:    { type: String },
-  cancelledAt:    { type: String },
+  cancelReason:   { type: String, default: '' },
+  cancelledBy:    { type: String, default: '' },
+  cancelledAt:    { type: String, default: '' },
 
-  // GRN flat fields (in addition to grn sub-doc)
-  grnNo:          { type: String },
-  grnDate:        { type: String },
-  grnBy:          { type: String },
-  grnRemarks:     { type: String },
-  physGrnNo:      { type: String },
-  physGrnDate:    { type: String },
+  // GRN flat fields (used by frontend alongside grn subdoc)
+  grnNo:          { type: String, trim: true, default: '' },
+  grnDate:        { type: String, default: '' },
+  grnBy:          { type: String, default: '' },
+  grnRemarks:     { type: String, default: '' },
+  purchVoucherNo: { type: String, trim: true, default: '' },
+  physGrnNo:      { type: String, trim: true, default: '' },
+  physGrnDate:    { type: String, default: '' },
 
-  // Billing / Purchase flat fields
-  purchVoucherNo:     { type: String },
-  vendorInvoiceNum:   { type: String },
-  vendorInvoiceDate:  { type: String },
+  // Vendor invoice flat fields
+  vendorInvoiceNum:  { type: String, trim: true, default: '' },
+  vendorInvoiceDate: { type: String, default: '' },
 
-  // Roles
-  biller:         { type: String },
-  salesExec:      { type: String },
+  // Remarks / comments
+  remark:         { type: String, default: '' },
+  comments:       [{ type: mongoose.Schema.Types.Mixed }],
+
+  // Transit details (flexible object)
+  transitDetails: { type: mongoose.Schema.Types.Mixed, default: {} },
+
+  // Stock flags
+  isStockOrder:     { type: Boolean, default: false },
+  isStockAddition:  { type: Boolean, default: false },
 
   // Misc
   notes:          { type: String },
-  remark:         { type: String },
-  comments:       { type: [mongoose.Schema.Types.Mixed], default: [] },
   isSplit:        { type: Boolean, default: false },
-  isStockOrder:   { type: Boolean, default: false },
-  isStockAddition:{ type: Boolean, default: false },
   linkedToOrderId:{ type: Number },
 
   // Sub-documents
