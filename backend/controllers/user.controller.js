@@ -33,6 +33,22 @@ exports.createUser = async (req, res, next) => {
   try {
     const { name, username, email, password, role, phone,
             department, departmentName, teamLeadId, teamLeadName } = req.body;
+
+    // If an inactive user is holding this username or email, free up the slot by renaming it
+    const stamp = Date.now();
+    const blockedByUsername = await User.findOne({ username: username.trim().toLowerCase(), isActive: false });
+    if (blockedByUsername) {
+      blockedByUsername.username = '_del_' + blockedByUsername._id.toString().slice(-6) + '_' + stamp;
+      blockedByUsername.email    = '_del_' + blockedByUsername._id.toString().slice(-6) + '_' + stamp + '@deleted.local';
+      await blockedByUsername.save();
+    }
+    const blockedByEmail = email ? await User.findOne({ email: email.trim().toLowerCase(), isActive: false }) : null;
+    if (blockedByEmail && String(blockedByEmail._id) !== String(blockedByUsername?._id)) {
+      blockedByEmail.email    = '_del_' + blockedByEmail._id.toString().slice(-6) + '_' + stamp + '@deleted.local';
+      blockedByEmail.username = '_del_' + blockedByEmail._id.toString().slice(-6) + '_' + stamp;
+      await blockedByEmail.save();
+    }
+
     const payload = {
       name, username, email, password, role, phone: phone || '',
       departmentName: departmentName || '',
