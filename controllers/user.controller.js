@@ -33,6 +33,11 @@ exports.createUser = async (req, res, next) => {
   try {
     const { name, username, email, password, role, phone,
             department, departmentName, teamLeadId, teamLeadName } = req.body;
+    const _stamp = Date.now();
+    const _blockedU = await User.findOne({ username: username.trim().toLowerCase(), isActive: false });
+    if (_blockedU) { _blockedU.username = '_del_'+_blockedU._id.toString().slice(-6)+'_'+_stamp; _blockedU.email = '_del_'+_blockedU._id.toString().slice(-6)+'_'+_stamp+'@deleted.local'; await _blockedU.save(); }
+    const _blockedE = email ? await User.findOne({ email: email.trim().toLowerCase(), isActive: false }) : null;
+    if (_blockedE && String(_blockedE._id) !== String(_blockedU?._id)) { _blockedE.email = '_del_'+_blockedE._id.toString().slice(-6)+'_'+_stamp+'@deleted.local'; _blockedE.username = '_del_'+_blockedE._id.toString().slice(-6)+'_'+_stamp; await _blockedE.save(); }
     const payload = {
       name, username, email, password, role, phone: phone || '',
       departmentName: departmentName || '',
@@ -50,12 +55,13 @@ exports.createUser = async (req, res, next) => {
 // PUT /api/users/:id
 exports.updateUser = async (req, res, next) => {
   try {
-    const { name, email, role, phone, isActive, permissionOverrides, roleRef,
+    const { name, username, email, role, phone, isActive, permissionOverrides, roleRef,
             department, departmentName, teamLeadId, teamLeadName } = req.body;
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    if (name  !== undefined) user.name  = name;
+    if (name !== undefined) user.name = name;
+    if (username !== undefined) user.username = username;
     if (email !== undefined) user.email = email;
     if (role  !== undefined) user.role  = role;
     if (phone !== undefined) user.phone = phone;
