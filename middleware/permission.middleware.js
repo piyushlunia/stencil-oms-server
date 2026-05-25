@@ -48,8 +48,8 @@ const ROLE_DEFAULTS = {
     'viewPendingDon','editPendingDon','viewPendingSpo','editPendingSpo',
     'raisePo','viewSupplierPo','editSupplierPo',
     'raiseGrn','purchaseOrder','viewMaster','editMaster'],
-  biller: ['viewAllOrders','viewPendingDon','viewDelivery','purchaseOrder','viewBiller','viewMaster'],
-  salesman: ['viewAllOrders','createOrder','viewPendingDon','viewDelivery','viewMaster'],
+  biller: ['viewAllOrders','createOrder','editOrder','viewPendingDon','viewDelivery','purchaseOrder','viewBiller','viewMaster','deliver'],
+  salesman: ['viewAllOrders','createOrder','editOrder','viewPendingDon','viewDelivery','viewMaster'],
 };
 
 /**
