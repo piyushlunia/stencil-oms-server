@@ -14,6 +14,11 @@ const customerSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   notes:    { type: String },
   createdBy:{ type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  // Assigned staff
+  assignedBiller:     { type: String, trim: true, default: '' },
+  assignedBillerId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assignedSalesman:   { type: String, trim: true, default: '' },
+  assignedSalesmanId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
 
 customerSchema.index({ name: 1 });
