@@ -1,4 +1,5 @@
 const Order = require('../models/Order');
+const { syncToSheets } = require('./sheetsSync');
 
 const trailEntry = (type, desc, from, to, note, user) => ({
   type, desc,
@@ -11,7 +12,7 @@ const trailEntry = (type, desc, from, to, note, user) => ({
   at:   new Date(),
 });
 
-// ── GET /api/orders ──────────────────────────────────────────────
+// ── GET /api/orders ──────────────────────────────────────────────────────────
 exports.getOrders = async (req, res, next) => {
   try {
     const {
@@ -55,7 +56,7 @@ exports.getOrders = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── GET /api/orders/:id ──────────────────────────────────────────
+// ── GET /api/orders/:id ──────────────────────────────────────────────────────
 exports.getOrder = async (req, res, next) => {
   try {
     const order = await Order.findOne({ $or: [{ _id: req.params.id.match(/^[0-9a-fA-F]{24}$/) ? req.params.id : null }, { seqId: parseInt(req.params.id) || -1 }] })
@@ -65,7 +66,7 @@ exports.getOrder = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── POST /api/orders ─────────────────────────────────────────────
+// ── POST /api/orders ─────────────────────────────────────────────────────────
 exports.createOrder = async (req, res, next) => {
   try {
     const body = req.body;
@@ -76,11 +77,12 @@ exports.createOrder = async (req, res, next) => {
     });
     order.trail = [trailEntry('created','Order created','',body.status||'Order','',req.user)];
     await order.save();
+    syncToSheets(order).catch(() => {});
     res.status(201).json({ success: true, data: order, message: 'Order created' });
   } catch (err) { next(err); }
 };
 
-// ── PUT /api/orders/:id ──────────────────────────────────────────
+// ── PUT /api/orders/:id ──────────────────────────────────────────────────────
 exports.updateOrder = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -111,12 +113,12 @@ exports.updateOrder = async (req, res, next) => {
     });
 
     // Array / object fields — replace wholesale if provided
-    if (req.body.comments   !== undefined) order.comments       = req.body.comments;
-    if (req.body.etaHistory !== undefined) order.etaHistory     = req.body.etaHistory;
-    if (req.body.trail      !== undefined) order.trail          = req.body.trail;
-    if (req.body.grn        !== undefined) order.grn            = req.body.grn;
-    if (req.body.billing    !== undefined) order.billing        = req.body.billing;
-    if (req.body.delivery   !== undefined) order.delivery       = req.body.delivery;
+    if (req.body.comments    !== undefined) order.comments       = req.body.comments;
+    if (req.body.etaHistory  !== undefined) order.etaHistory     = req.body.etaHistory;
+    if (req.body.trail       !== undefined) order.trail          = req.body.trail;
+    if (req.body.grn         !== undefined) order.grn            = req.body.grn;
+    if (req.body.billing     !== undefined) order.billing        = req.body.billing;
+    if (req.body.delivery    !== undefined) order.delivery       = req.body.delivery;
     if (req.body.transitDetails !== undefined) order.transitDetails = req.body.transitDetails;
 
     // ETA change → log etaHistory entry if not already in provided array
@@ -125,11 +127,12 @@ exports.updateOrder = async (req, res, next) => {
     }
 
     await order.save();
+    syncToSheets(order).catch(() => {});
     res.json({ success: true, data: order, message: 'Order updated' });
   } catch (err) { next(err); }
 };
 
-// ── PATCH /api/orders/:id/status ─────────────────────────────────
+// ── PATCH /api/orders/:id/status ─────────────────────────────────────────────
 exports.updateStatus = async (req, res, next) => {
   try {
     const { status, note, ...extra } = req.body;
@@ -147,11 +150,12 @@ exports.updateStatus = async (req, res, next) => {
 
     order.trail.push(trailEntry('status', `Status changed to ${status}`, prev, status, note||'', req.user));
     await order.save();
+    syncToSheets(order).catch(() => {});
     res.json({ success: true, data: order, message: `Status updated to ${status}` });
   } catch (err) { next(err); }
 };
 
-// ── PATCH /api/orders/:id/eta ────────────────────────────────────
+// ── PATCH /api/orders/:id/eta ────────────────────────────────────────────────
 exports.updateEta = async (req, res, next) => {
   try {
     const { eta, reason } = req.body;
@@ -166,11 +170,12 @@ exports.updateEta = async (req, res, next) => {
     order.trail.push(trailEntry('eta','ETA changed', prevEta, eta, reason||'', req.user));
 
     await order.save();
+    syncToSheets(order).catch(() => {});
     res.json({ success: true, data: order, message: 'ETA updated' });
   } catch (err) { next(err); }
 };
 
-// ── POST /api/orders/:id/comment ─────────────────────────────────
+// ── POST /api/orders/:id/comment ─────────────────────────────────────────────
 exports.addComment = async (req, res, next) => {
   try {
     const { text } = req.body;
@@ -185,7 +190,7 @@ exports.addComment = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── PATCH /api/orders/:id/grn ────────────────────────────────────
+// ── PATCH /api/orders/:id/grn ────────────────────────────────────────────────
 exports.raiseGrn = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -195,11 +200,12 @@ exports.raiseGrn = async (req, res, next) => {
     order.status = 'GRN';
     order.trail.push(trailEntry('grn','GRN raised', order.status, 'GRN', req.body.notes||'', req.user));
     await order.save();
+    syncToSheets(order).catch(() => {});
     res.json({ success: true, data: order, message: 'GRN raised' });
   } catch (err) { next(err); }
 };
 
-// ── PATCH /api/orders/:id/billing ────────────────────────────────
+// ── PATCH /api/orders/:id/billing ────────────────────────────────────────────
 exports.addBilling = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -209,11 +215,12 @@ exports.addBilling = async (req, res, next) => {
     order.status = 'Billed';
     order.trail.push(trailEntry('billing','Order billed', order.status, 'Billed', req.body.notes||'', req.user));
     await order.save();
+    syncToSheets(order).catch(() => {});
     res.json({ success: true, data: order, message: 'Billing recorded' });
   } catch (err) { next(err); }
 };
 
-// ── PATCH /api/orders/:id/delivery ───────────────────────────────
+// ── PATCH /api/orders/:id/delivery ───────────────────────────────────────────
 exports.markDelivered = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id);
@@ -223,11 +230,12 @@ exports.markDelivered = async (req, res, next) => {
     order.status = 'Delivered';
     order.trail.push(trailEntry('delivery','Order delivered', order.status, 'Delivered', req.body.notes||'', req.user));
     await order.save();
+    syncToSheets(order).catch(() => {});
     res.json({ success: true, data: order, message: 'Marked as delivered' });
   } catch (err) { next(err); }
 };
 
-// ── POST /api/orders/:id/split ───────────────────────────────────
+// ── POST /api/orders/:id/split ───────────────────────────────────────────────
 exports.splitOrder = async (req, res, next) => {
   try {
     const { splitQty } = req.body;
@@ -240,6 +248,7 @@ exports.splitOrder = async (req, res, next) => {
     order.isSplit = true;
     order.trail.push(trailEntry('split', `Order split — ${splitQty} / ${remQty}`, '','',`Split qty: ${splitQty}`, req.user));
     await order.save();
+    syncToSheets(order).catch(() => {});
 
     // Create remainder order
     const remainder = new Order({
@@ -254,12 +263,13 @@ exports.splitOrder = async (req, res, next) => {
       grn: undefined, billing: undefined, delivery: undefined,
     });
     await remainder.save();
+    syncToSheets(remainder).catch(() => {});
 
     res.json({ success: true, data: { original: order, split: remainder }, message: 'Order split' });
   } catch (err) { next(err); }
 };
 
-// ── GET /api/orders/:id/trail ────────────────────────────────────
+// ── GET /api/orders/:id/trail ────────────────────────────────────────────────
 exports.getTrail = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id).select('trail seqId customer');
@@ -268,7 +278,7 @@ exports.getTrail = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-// ── DELETE /api/orders/:id ───────────────────────────────────────
+// ── DELETE /api/orders/:id ───────────────────────────────────────────────────
 exports.deleteOrder = async (req, res, next) => {
   try {
     const order = await Order.findById(req.params.id);
