@@ -25,11 +25,11 @@ const grnRoutes         = require('./routes/grn.routes');
 const shipmentRoutes    = require('./routes/shipment.routes');
 const departmentRoutes  = require('./routes/department.routes');
 
-// ── App ──────────────────────────────────────────────────────────
+// ── App ────────────────────────────────────────────────────────────
 const app = express();
 connectDB();
 
-// ── Security & Parsing ──────────────────────────────────────────
+// ── Security & Parsing ─────────────────────────────────────────────
 app.use(helmet());
 const allowedOrigins = [
   'http://localhost:5173',
@@ -50,19 +50,19 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 
-// ── Rate Limiting ────────────────────────────────────────────────
+// ── Rate Limiting ────────────────────────────────────────────────────
 app.use('/api/auth', rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
   message: { success: false, message: 'Too many auth requests — try again in 15 minutes' },
 }));
 
-// ── Health Check ─────────────────────────────────────────────────
+// ── Health Check ─────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Stencil OMS API is running 🚀', env: process.env.NODE_ENV });
 });
 
-// ── Admin: Wipe ALL data (superadmin only) ───────────────────────
+// ── Admin: Wipe ALL data (superadmin only) ───────────────────────────
 app.delete('/api/admin/wipe-all', protect, async (req, res, next) => {
   try {
     if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
@@ -88,7 +88,7 @@ app.delete('/api/admin/wipe-all', protect, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── API Routes ────────────────────────────────────────────────────
+// ── API Routes ────────────────────────────────────────────────────────
 app.use('/api/auth',         authRoutes);
 app.use('/api/orders',       orderRoutes);
 app.use('/api/users',        userRoutes);
@@ -105,7 +105,7 @@ app.use('/api/grns',         grnRoutes);
 app.use('/api/shipments',    shipmentRoutes);
 app.use('/api/departments',  departmentRoutes);
 
-// ── Error Handling ───────────────────────────────────────────────
+// ── Error Handling ───────────────────────────────────────────────────
 app.use(notFound);
 app.use(errorHandler);
 
@@ -118,13 +118,13 @@ async function resetAdminIfRequested() {
     const User = require('./models/User');
     const hash = await bcrypt.hash(newPass, 10);
     const result = await User.updateOne({ username: 'admin' }, { $set: { password: hash } });
-    console.log('[RESET] Admin password reset result:', result.modifiedCount, 'doc(s) updated');
+    console.log('[RESET] Admin password reset:', result.modifiedCount, 'doc(s) updated');
   } catch(e) {
-    console.error('[RESET] Failed to reset admin password:', e.message);
+    console.error('[RESET] Failed:', e.message);
   }
 }
 
-// ── Start Server ─────────────────────────────────────────────────
+// ── Start Server ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 resetAdminIfRequested();
 app.listen(PORT, () => {
