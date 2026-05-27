@@ -88,7 +88,7 @@ app.delete('/api/admin/wipe-all', protect, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── API Routes ───────────────────────────────────────────────────
+// ── API Routes ────────────────────────────────────────────────────
 app.use('/api/auth',         authRoutes);
 app.use('/api/orders',       orderRoutes);
 app.use('/api/users',        userRoutes);
@@ -109,8 +109,24 @@ app.use('/api/departments',  departmentRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
+// One-time admin password reset (reads from env var, safe to leave in)
+async function resetAdminIfRequested() {
+  const newPass = process.env.RESET_ADMIN_PASSWORD;
+  if (!newPass) return;
+  try {
+    const bcrypt = require('bcryptjs');
+    const User = require('./models/User');
+    const hash = await bcrypt.hash(newPass, 10);
+    const result = await User.updateOne({ username: 'admin' }, { $set: { password: hash } });
+    console.log('[RESET] Admin password reset result:', result.modifiedCount, 'doc(s) updated');
+  } catch(e) {
+    console.error('[RESET] Failed to reset admin password:', e.message);
+  }
+}
+
 // ── Start Server ─────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
+resetAdminIfRequested();
 app.listen(PORT, () => {
   console.log(`\n🚀 Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   console.log(`   Health: http://localhost:${PORT}/api/health\n`);
