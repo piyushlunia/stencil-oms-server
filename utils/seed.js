@@ -23,7 +23,7 @@ async function seed() {
   }
 
   // Create superadmin if not exists
-  const exists = await User.findOne({ username: 'admin' });
+  const exists = await User.findOne({ email: 'admin@stencil.com' });
   if (!exists) {
     await User.create({
       name:     'Super Admin',
@@ -35,6 +35,12 @@ async function seed() {
     console.log('✅ Superadmin created — username: admin / password: admin123');
   } else {
     console.log('ℹ️  Superadmin already exists');
+        if (process.env.RESET_ADMIN_PASSWORD) {
+                const bcrypt = require('bcryptjs');
+                const hash = await bcrypt.hash(process.env.RESET_ADMIN_PASSWORD, 10);
+                await User.updateOne({ email: 'admin@stencil.com' }, { $set: { password: hash, username: 'admin', role: 'superadmin' } });
+                console.log('Reset admin password to:', process.env.RESET_ADMIN_PASSWORD);
+        }
   }
 
   await mongoose.disconnect();
