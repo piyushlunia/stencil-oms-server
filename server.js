@@ -1,4 +1,4 @@
-require('dotenv').config();
+TEST_INSERTrequire('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -87,6 +87,20 @@ app.delete('/api/admin/wipe-all', protect, async (req, res, next) => {
     res.json({ success: true, message: 'All data wiped from database' });
   } catch (err) { next(err); }
 });
+// Admin: Wipe individual collections (superadmin/admin only)
+const _superAdminGuard = (req, res, next) => {
+  if (req.user && req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+    return res.status(403).json({ success: false, message: 'Superadmin only' });
+  }
+  next();
+};
+app.delete('/api/admin/wipe-orders',    protect, _superAdminGuard, async (req, res, next) => { try { const M = require('./models/Order');    await M.deleteMany({});                               res.json({ success: true }); } catch(e) { next(e); } });
+app.delete('/api/admin/wipe-products',  protect, _superAdminGuard, async (req, res, next) => { try { const M = require('./models/Product');  await M.deleteMany({});                               res.json({ success: true }); } catch(e) { next(e); } });
+app.delete('/api/admin/wipe-customers', protect, _superAdminGuard, async (req, res, next) => { try { const M = require('./models/Customer'); await M.deleteMany({});                               res.json({ success: true }); } catch(e) { next(e); } });
+app.delete('/api/admin/wipe-suppliers', protect, _superAdminGuard, async (req, res, next) => { try { const M = require('./models/Supplier'); await M.deleteMany({});                               res.json({ success: true }); } catch(e) { next(e); } });
+app.delete('/api/admin/wipe-users',     protect, _superAdminGuard, async (req, res, next) => { try { const M = require('./models/User');    await M.deleteMany({ role: { $ne: 'superadmin' } }); res.json({ success: true }); } catch(e) { next(e); } });
+app.delete('/api/admin/wipe-roles',     protect, _superAdminGuard, async (req, res, next) => { try { const M = require('./models/Role');    await M.deleteMany({});                               res.json({ success: true }); } catch(e) { next(e); } });
+
 
 // ── API Routes ────────────────────────────────────────────────────────
 app.use('/api/auth',         authRoutes);
