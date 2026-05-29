@@ -51,7 +51,7 @@ if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 // ── Rate Limiting ────────────────────────────────────────────────────
 app.use('/api/auth', rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 100,
   message: { success: false, message: 'Too many auth requests — try again in 15 minutes' },
 }));
 
