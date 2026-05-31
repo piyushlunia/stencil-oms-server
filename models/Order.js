@@ -146,7 +146,7 @@ orderSchema.pre('save', async function(next) {
 
 
 // Accumulate every biller / sales-exec the order has ever had (for visibility)
-trailEntrySchema.pre('save', function(next){
+orderSchema.pre('save', function(next){
   try{
     if(this.biller){ if(!Array.isArray(this.billerHistory)) this.billerHistory=[]; if(!this.billerHistory.includes(this.biller)) this.billerHistory.push(this.biller); }
     if(this.salesExec){ if(!Array.isArray(this.salesHistory)) this.salesHistory=[]; if(!this.salesHistory.includes(this.salesExec)) this.salesHistory.push(this.salesExec); }
