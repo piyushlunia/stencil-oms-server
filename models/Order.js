@@ -154,4 +154,7 @@ orderSchema.pre('save', function(next){
   next();
 });
 
+// Notify connected SSE clients on any order change (create / status / grn / billing / etc.)
+orderSchema.post('save', function(doc){ try{ if(global.__sseNotify) global.__sseNotify(doc); }catch(e){} });
+
 module.exports = mongoose.model('Order', orderSchema);
