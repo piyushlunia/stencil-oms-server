@@ -289,3 +289,72 @@ exports.deleteOrder = async (req, res, next) => {
     res.json({ success: true, message: 'Order deleted' });
   } catch (err) { next(err); }
 };
+
+
+// ── POST /api/orders/maintenance/dedup  (admin only) ────────
+// Finds duplicate ACTIVE orders sharing the same
+// customer + product + qty + orderDate(day) + createdBy, and removes all
+// but the one with the most-advanced status. Dry-run by default.
+// Query/body: apply=true to perform; hard=true to hard-delete (default soft).
+const STATUS_PRIORITY = ['Cancelled','Order','Approved','PO Raised','In Transit','At Transporter','Warehouse','GRN','Purchased','Billed','Delivered'];
+
+exports.dedupOrders = async (req, res, next) => {
+  try {
+    const apply = req.query.apply === 'true' || req.body.apply === true;
+    const hard  = req.query.hard  === 'true' || req.body.hard  === true;
+
+    const norm   = v => String(v == null ? '' : v).trim().toLowerCase();
+    const dayKey = d => { const dt = new Date(d); return isNaN(dt) ? '' : dt.toISOString().slice(0, 10); };
+    const prio   = s => { const i = STATUS_PRIORITY.indexOf(s); return i === -1 ? 0 : i; };
+
+    const orders = await Order.find({ isActive: true }).lean();
+    const groups = {};
+    for (const o of orders) {
+      const key = [norm(o.customer), norm(o.product), o.qty, dayKey(o.orderDate), norm(o.createdBy)].join('|');
+      (groups[key] = groups[key] || []).push(o);
+    }
+
+    const toRemove = [];
+    const report   = [];
+    for (const docs of Object.values(groups)) {
+      if (docs.length < 2) continue;
+      docs.sort((a, b) => {
+        const pd = prio(b.status) - prio(a.status); if (pd) return pd;
+        const td = (b.trail ? b.trail.length : 0) - (a.trail ? a.trail.length : 0); if (td) return td;
+        const ud = new Date(b.updatedAt) - new Date(a.updatedAt); if (ud) return ud;
+        return (a.seqId || 0) - (b.seqId || 0);
+      });
+      const keep = docs[0];
+      const dups = docs.slice(1);
+      dups.forEach(d => toRemove.push(d._id));
+      report.push({
+        customer: keep.customer, product: keep.product, qty: keep.qty,
+        orderDate: dayKey(keep.orderDate), createdBy: keep.createdBy,
+        kept:    { id: keep._id, seqId: keep.seqId, status: keep.status },
+        removed: dups.map(d => ({ id: d._id, seqId: d.seqId, status: d.status })),
+      });
+    }
+
+    let applied = false;
+    if (apply && toRemove.length) {
+      if (hard) {
+        await Order.deleteMany({ _id: { $in: toRemove } });
+      } else {
+        const entry = trailEntry('edited', 'Removed as duplicate (dedup cleanup)', '', 'Deleted', '', req.user);
+        await Order.updateMany({ _id: { $in: toRemove } }, { $set: { isActive: false }, $push: { trail: entry } });
+      }
+      applied = true;
+    }
+
+    res.json({
+      success: true,
+      dryRun: !apply,
+      applied,
+      mode: hard ? 'hard-delete' : 'soft-delete',
+      duplicateGroups: report.length,
+      ordersToRemove: toRemove.length,
+      ordersRemoved: applied ? toRemove.length : 0,
+      groups: report,
+    });
+  } catch (err) { next(err); }
+};
