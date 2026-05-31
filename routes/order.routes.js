@@ -1,9 +1,11 @@
 const router = require('express').Router();
 const ctrl   = require('../controllers/order.controller');
-const { protect }  = require('../middleware/auth.middleware');
+const { protect, restrictTo } = require('../middleware/auth.middleware');
 const { can }      = require('../middleware/permission.middleware');
 
 router.use(protect);
+
+router.post('/maintenance/dedup', restrictTo('superadmin','admin'), ctrl.dedupOrders);
 
 router.get  ('/',              can('viewAllOrders'), ctrl.getOrders);
 router.get  ('/:id',           can('viewAllOrders'), ctrl.getOrder);
