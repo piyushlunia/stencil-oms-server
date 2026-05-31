@@ -59,22 +59,6 @@ app.use('/api/auth', rateLimit({
 app.get('/api/health', (req, res) => {
   res.json({ success: true, message: 'Stencil OMS API is running 🚀', env: process.env.NODE_ENV });
 
-// ── Live updates (Server-Sent Events) ──────────────────────────
-const _sseClients = new Set();
-app.get('/api/stream', (req, res) => {
-  res.set({ 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', 'Connection':'keep-alive', 'X-Accel-Buffering':'no' });
-  if (res.flushHeaders) res.flushHeaders();
-  res.write('retry: 5000\n\n');
-  res.write(': connected\n\n');
-  _sseClients.add(res);
-  const _ka = setInterval(() => { try { res.write(': ka\n\n'); } catch (e) {} }, 25000);
-  req.on('close', () => { clearInterval(_ka); _sseClients.delete(res); });
-});
-// Broadcast a lightweight change ping (no order data on the open stream)
-global.__sseNotify = () => {
-  for (const c of _sseClients) { try { c.write('event: order\ndata: changed\n\n'); } catch (e) {} }
-};
-
 });
 
 // ── Admin: Wipe ALL data (superadmin only) ───────────────────────────
@@ -135,6 +119,21 @@ app.use('/api/shipments',    shipmentRoutes);
 app.use('/api/departments',  departmentRoutes);
 
 // ── Error Handling ───────────────────────────────────────────────────
+// ── Live updates (Server-Sent Events) ──────────────────────────
+const _sseClients = new Set();
+app.get('/api/stream', (req, res) => {
+  res.set({ 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', 'Connection':'keep-alive', 'X-Accel-Buffering':'no' });
+  if (res.flushHeaders) res.flushHeaders();
+  res.write('retry: 5000\n\n');
+  res.write(': connected\n\n');
+  _sseClients.add(res);
+  const _ka = setInterval(() => { try { res.write(': ka\n\n'); } catch (e) {} }, 25000);
+  req.on('close', () => { clearInterval(_ka); _sseClients.delete(res); });
+});
+global.__sseNotify = () => {
+  for (const c of _sseClients) { try { c.write('event: order\ndata: changed\n\n'); } catch (e) {} }
+};
+
 app.use(notFound);
 app.use(errorHandler);
 
