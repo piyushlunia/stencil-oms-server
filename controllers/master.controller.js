@@ -63,5 +63,25 @@ _custCrud.create = async (req, res, next) => {
 };
 exports.customers = _custCrud;
 exports.suppliers    = makeCrud(Supplier,    'Supplier');
-exports.products     = makeCrud(Product,     'Product');
+const _prodCrud = makeCrud(Product, 'Product');
+_prodCrud.create = async (req, res, next) => {
+  try {
+    const name = (req.body.name || '').trim();
+    const code = (req.body.code || '').trim();
+    if (!code) delete req.body.code;
+    let existing = null;
+    if (name) existing = await Product.findOne({ name });
+    if (!existing && code) existing = await Product.findOne({ code });
+    if (existing) {
+      Object.keys(req.body).forEach(k => { if (k !== '_id' && k !== 'createdBy') existing[k] = req.body[k]; });
+      if (!code) existing.code = undefined;
+      existing.isActive = true;
+      await existing.save();
+      return res.json({ success: true, data: existing, message: 'Product updated' });
+    }
+    const item = await Product.create({ ...req.body, createdBy: req.user._id });
+    res.status(201).json({ success: true, data: item, message: 'Product created' });
+  } catch (err) { next(err); }
+};
+exports.products = _prodCrud;
 exports.transporters = makeCrud(Transporter, 'Transporter');
