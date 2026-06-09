@@ -15,6 +15,8 @@ const supplierSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   notes:    { type: String },
   createdBy:{ type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  whatsapp: { type: String, trim: true },
+  contact:  { type: String, trim: true },
 }, { timestamps: true });
 
 supplierSchema.index({ name: 1 });
