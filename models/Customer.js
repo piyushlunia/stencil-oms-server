@@ -19,6 +19,8 @@ const customerSchema = new mongoose.Schema({
   assignedBillerId:   { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   assignedSalesman:   { type: String, trim: true, default: '' },
   assignedSalesmanId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  whatsapp: { type: String, trim: true },
+  contact:  { type: String, trim: true },
 }, { timestamps: true });
 
 customerSchema.index({ name: 1 });
