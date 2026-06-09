@@ -62,7 +62,24 @@ _custCrud.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 exports.customers = _custCrud;
-exports.suppliers    = makeCrud(Supplier,    'Supplier');
+const _supCrud = makeCrud(Supplier, 'Supplier');
+_supCrud.create = async (req, res, next) => {
+  try {
+    const name = (req.body.name || '').trim();
+    if (name) {
+      const existing = await Supplier.findOne({ name });
+      if (existing) {
+        Object.keys(req.body).forEach(k => { if (k !== '_id' && k !== 'createdBy') existing[k] = req.body[k]; });
+        existing.isActive = true;
+        await existing.save();
+        return res.json({ success: true, data: existing, message: 'Supplier updated' });
+      }
+    }
+    const item = await Supplier.create({ ...req.body, createdBy: req.user._id });
+    res.status(201).json({ success: true, data: item, message: 'Supplier created' });
+  } catch (err) { next(err); }
+};
+exports.suppliers = _supCrud;
 const _prodCrud = makeCrud(Product, 'Product');
 _prodCrud.create = async (req, res, next) => {
   try {
@@ -84,4 +101,21 @@ _prodCrud.create = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 exports.products = _prodCrud;
-exports.transporters = makeCrud(Transporter, 'Transporter');
+const _transCrud = makeCrud(Transporter, 'Transporter');
+_transCrud.create = async (req, res, next) => {
+  try {
+    const name = (req.body.name || '').trim();
+    if (name) {
+      const existing = await Transporter.findOne({ name });
+      if (existing) {
+        Object.keys(req.body).forEach(k => { if (k !== '_id' && k !== 'createdBy') existing[k] = req.body[k]; });
+        existing.isActive = true;
+        await existing.save();
+        return res.json({ success: true, data: existing, message: 'Transporter updated' });
+      }
+    }
+    const item = await Transporter.create({ ...req.body, createdBy: req.user._id });
+    res.status(201).json({ success: true, data: item, message: 'Transporter created' });
+  } catch (err) { next(err); }
+};
+exports.transporters = _transCrud;
