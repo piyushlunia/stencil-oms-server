@@ -139,6 +139,12 @@ orderSchema.pre('save', async function(next) {
   if (this.isNew && !this.seqId) {
     const last = await this.constructor.findOne({}, {}, { sort: { seqId: -1 } });
     this.seqId = last ? last.seqId + 1 : 1001;
+    // DON collision guard: if the client-supplied DON already belongs to a DIFFERENT customer
+    // (stale client numbering), give this order its own DON instead of merging customers.
+    if (this.groupDonId) {
+      const _conf = await this.constructor.findOne({ groupDonId: this.groupDonId, customer: { $ne: this.customer } });
+      if (_conf) this.groupDonId = this.seqId;
+    }
     if (!this.groupDonId) this.groupDonId = this.seqId;
   }
   next();
